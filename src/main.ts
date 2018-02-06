@@ -1,7 +1,8 @@
 import { dbInit, fireAndForgetQueue } from './module';
 import * as argparse from 'argparse';
-import * as streams from 'memory-streams';
-import { StreamWriter } from './stream-writer';
+import { TextWriter } from './text-writer';
+import { FileTextWriterFactory } from './file-text-writer-factory';
+import { ConsoleTextWriterFactory } from './console-text-writer-factory';
 
 const commandLineOptions = [
     { name: 'action', alias: 'a', type: String, multiple: false }
@@ -71,20 +72,11 @@ queueCommand.addArgument(
 // //////////////////////////
 const args = parser.parseArgs();
 
-const stream = new streams.ReadableStream('');
-stream.pipe(process.stdout);
-
-const writer: StreamWriter = {
-    write(string: string) {
-        stream.push(string);
-    }
-};
-
 switch (args.generator.toLowerCase()) {
     case "db-init":
-        dbInit(writer, args);
+        dbInit(new ConsoleTextWriterFactory(), args);
         break;
     case "fire-and-forget-queue":
-        fireAndForgetQueue(writer, args);
+        fireAndForgetQueue(new ConsoleTextWriterFactory(), args);
         break;
 }

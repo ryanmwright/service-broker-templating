@@ -2,14 +2,14 @@ import { Action } from "./action";
 import * as Handlebars from 'handlebars';
 import * as createTemplate from '../handlebars/endpoint-configuration-table-create.handlebars';
 import * as existenceCheckTemplate from '../handlebars/existence-check.handlebars';
-import { StreamWriter } from "../stream-writer";
+import { TextWriter } from "../text-writer";
 import { ActionResult } from "../action-result";
 
 export class CreateEndpointConfigurationTable implements Action {
 
     constructor(private configuration: any) { }
 
-    execute(stream: StreamWriter): ActionResult {
+    execute(stream: TextWriter): ActionResult {
         stream.write(existenceCheckTemplate({
             not: true,
             schema: this.configuration.schema,

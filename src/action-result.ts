@@ -1,8 +1,8 @@
 import { Action } from "./actions/action";
-import { StreamWriter } from "./stream-writer";
+import { TextWriter } from "./text-writer";
 
 export class ActionResult {
-    constructor(private writer: StreamWriter) {
+    constructor(private writer: TextWriter) {
 
     }
 

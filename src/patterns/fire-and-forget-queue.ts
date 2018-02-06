@@ -1,5 +1,5 @@
 import * as extend from 'extend';
-import { StreamWriter } from '../stream-writer';
+import { TextWriter } from '../text-writer';
 import { BeginTransaction } from '../actions/begin-transaction';
 import { CommitTransaction } from '../actions/commit-transaction';
 import { CreateQueue } from '../actions/create-queue';
@@ -10,13 +10,14 @@ import { ModifyServiceContracts } from '../actions/modify-service-contracts';
 import { CreateEndOfStreamMessageType } from '../actions/create-end-of-stream-message-type';
 import { InsertEndpointConfigurationTable } from '../actions/insert-endpoint-configuration-table';
 import { CreateActivatedProc } from '../actions/create-activated-proc';
+import { TextWriterFactory } from '../text-writer-factory';
 
 /**
  * 
  * @param writer 
  * @param args 
  */
-export function fireAndForgetQueue(writer: StreamWriter, args: any) {
+export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) {
 
     if (!args.name) {
         throw "name is required";
@@ -94,6 +95,8 @@ export function fireAndForgetQueue(writer: StreamWriter, args: any) {
         conversationErrorLogTableName: "ServiceBrokerErrorLog"
     };
 
+    const writer = writerFactory.get('fire-and-forget-queue.sql');
+
     new BeginTransaction()
         .execute(writer)
         .go()
@@ -129,4 +132,6 @@ export function fireAndForgetQueue(writer: StreamWriter, args: any) {
 
         .then(new CommitTransaction())
         .go();
+
+    writer.close();
 }

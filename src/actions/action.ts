@@ -1,6 +1,6 @@
-import { StreamWriter } from "../stream-writer";
+import { TextWriter } from "../text-writer";
 import { ActionResult } from "../action-result";
 
 export interface Action {
-    execute(writer: StreamWriter): ActionResult;
+    execute(writer: TextWriter): ActionResult;
 }

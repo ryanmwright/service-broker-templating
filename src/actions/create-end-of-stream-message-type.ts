@@ -2,7 +2,7 @@ import { Action } from "./action";
 import * as Handlebars from 'handlebars';
 import * as createTemplate from '../handlebars/messagetype-create.handlebars';
 import * as existenceCheckTemplate from '../handlebars/existence-check.handlebars';
-import { StreamWriter } from "../stream-writer";
+import { TextWriter } from "../text-writer";
 import { ActionResult } from "../action-result";
 import { CreateMessageType } from "./create-message-type";
 
@@ -12,7 +12,7 @@ export class CreateEndOfStreamMessageType implements Action {
 
     constructor(private configuration: any) { }
 
-    execute(stream: StreamWriter): ActionResult {
+    execute(stream: TextWriter): ActionResult {
         const endOfStreamMessageTypeConfiguration = {
             name: "EndOfStream",
             owner: this.defaultOwner,

@@ -2,14 +2,14 @@ import { Action } from "./action";
 import * as Handlebars from 'handlebars';
 import * as createTemplate from '../handlebars/purge-all-tracked-conversations-proc.handlebars';
 import * as existenceCheckTemplate from '../handlebars/existence-check.handlebars';
-import { StreamWriter } from "../stream-writer";
+import { TextWriter } from "../text-writer";
 import { ActionResult } from "../action-result";
 
 export class CreatePurgeAllTrackedConversationsProc implements Action {
 
     constructor(private configuration: any) { }
 
-    execute(stream: StreamWriter): ActionResult {
+    execute(stream: TextWriter): ActionResult {
         stream.write(createTemplate(this.configuration));
         return new ActionResult(stream);
     }

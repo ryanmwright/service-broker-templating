@@ -1,6 +1,6 @@
 import * as extend from 'extend';
 import { EnableBroker } from '../actions/enable-broker';
-import { StreamWriter } from '../stream-writer';
+import { TextWriter } from '../text-writer';
 import { BeginTransaction } from '../actions/begin-transaction';
 import { CommitTransaction } from '../actions/commit-transaction';
 import { CreateQueue } from '../actions/create-queue';
@@ -11,13 +11,14 @@ import { CreateSendMessageProc } from '../actions/create-send-message-proc';
 import { CreateRemoveTrackedConversationProc } from '../actions/create-remove-tracked-conversation-proc';
 import { CreatePurgeAllTrackedConversationsProc } from '../actions/create-purge-all-tracked-conversations-proc';
 import { CreatePurgeAllTrackedConversationsSqlJob } from '../actions/create-purge-all-tracked-conversations-sql-job';
+import { TextWriterFactory } from '../text-writer-factory';
 
 /**
  * 
  * @param writer 
  * @param args 
  */
-export function dbInit(writer: StreamWriter, args: any) {
+export function dbInit(writerFactory: TextWriterFactory, args: any) {
 
     const defaultArguments = {
         schema: "dbo",
@@ -37,6 +38,7 @@ export function dbInit(writer: StreamWriter, args: any) {
     };
 
     const baseArguments = extend({}, defaultArguments, args);
+    const writer = writerFactory.get('init-db.sql');
 
     new EnableBroker(extend({}, baseArguments, {database: baseArguments.database}))
         .execute(writer)
@@ -59,4 +61,6 @@ export function dbInit(writer: StreamWriter, args: any) {
         .go()
         .then(new CommitTransaction())
         .go();
+
+    writer.close();
 }

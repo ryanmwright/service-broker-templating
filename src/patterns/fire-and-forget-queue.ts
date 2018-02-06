@@ -9,6 +9,7 @@ import { CreateService } from '../actions/create-service';
 import { ModifyServiceContracts } from '../actions/modify-service-contracts';
 import { CreateEndOfStreamMessageType } from '../actions/create-end-of-stream-message-type';
 import { InsertEndpointConfigurationTable } from '../actions/insert-endpoint-configuration-table';
+import { CreateActivatedProc } from '../actions/create-activated-proc';
 
 /**
  * 
@@ -82,6 +83,17 @@ export function fireAndForgetQueue(writer: StreamWriter, args: any) {
         conversationTimeout: 3600
     };
 
+    const initiatorActivatedProcConfiguration = {
+        schema: "dbo",
+        name: (args.initiator ? args.initiator + "Queue" : "InitiatorQueue") + "ActivatedListener",
+        queueSchema: initiatorQueueConfiguration.schema,
+        queueName: initiatorQueueConfiguration.name,
+        conversationTrackingTableSchema: "dbo",
+        conversationTrackingTableName: "ServiceBrokerConversationPool",
+        conversationErrorLogTableSchema: "dbo",
+        conversationErrorLogTableName: "ServiceBrokerErrorLog"
+    };
+
     new BeginTransaction()
         .execute(writer)
         .go()
@@ -101,6 +113,7 @@ export function fireAndForgetQueue(writer: StreamWriter, args: any) {
         .go()
         .then(new InsertEndpointConfigurationTable(endpointConfigurationTableValues))
         .go()
+        .then(new CreateActivatedProc(initiatorActivatedProcConfiguration))
 
         // Target
         .then(new CreateQueue(targetQueueConfiguration))

@@ -1,0 +1,123 @@
+IF OBJECT_ID('{{#if schema}}[{{schema}}].{{/if}}[{{name}}]') IS NULL
+BEGIN
+    EXEC('CREATE PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}] AS SET NOCOUNT ON;')
+END
+GO
+ALTER PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+(
+    @endpoint VARCHAR(255) = NULL,
+    @xml XML
+)
+AS BEGIN
+
+    SET NOCOUNT ON;
+    SET XACT_ABORT,
+        QUOTED_IDENTIFIER,
+        ANSI_NULLS,
+        ANSI_PADDING,
+        ANSI_WARNINGS,
+        ARITHABORT,
+        CONCAT_NULL_YIELDS_NULL ON;
+    SET NUMERIC_ROUNDABORT OFF;
+
+    DECLARE @fromService SYSNAME,
+        @toService SYSNAME,
+        @onContract SYSNAME,
+        @messageType SYSNAME,
+        @conversationTimeout INT;
+
+    SELECT @fromService = FromService
+        , @toService = ToService
+        , @onContract = OnContract
+        , @messageType = MessageType
+        , @conversationTimeout = ConversationTimeout
+    FROM {{#if endpointConfigurationTableSchema}}[{{endpointConfigurationTableSchema}}].{{/if}}[{{endpointConfigurationTableName}}]
+    WHERE Code = @endpoint;
+
+    IF @fromService IS NULL OR @toService IS NULL OR @onContract IS NULL OR @messageType IS NULL OR @conversationTimeout IS NULL
+    BEGIN
+        RAISERROR (
+            N'Failed to get endpoint config for Code ''%s''.'
+            , 16, 1, @endpoint);
+        RETURN;
+    END
+
+    DECLARE @SBDialog UNIQUEIDENTIFIER
+    DECLARE @Message XML
+    DECLARE @counter INT
+    DECLARE @error INT
+    DECLARE @conversationCreateDate DATETIME2
+    DECLARE @handle UNIQUEIDENTIFIER;
+
+    SET @counter = 1
+
+    WHILE (1=1)
+    BEGIN
+
+        SET @handle = NULL
+
+        -- Seek an eligible conversation in {{#if trackingTableSchema}}[{{trackingTableSchema}}].{{/if}}[{{trackingTableName}}]
+        {{#unless memoryOptimized}}-- We will hold an UPDLOCK on the composite primary key to guarantee locking order{{/unless}}
+        SELECT @handle = Handle
+            , @conversationCreateDate = CreateDate
+        FROM {{#if trackingTableSchema}}[{{trackingTableSchema}}].{{/if}}[{{trackingTableName}}]{{#unless memoryOptimized}} WITH (UPDLOCK){{/unless}}
+        WHERE SPID = @@SPID
+            AND FromService = @fromService
+            AND ToService = @toService
+            AND OnContract = @onContract;
+
+        -- If the conversation is expired then remove it and start a new one
+        IF DATEADD(MINUTE, @conversationTimeout, @conversationCreateDate) < SYSUTCDATETIME()
+        BEGIN
+            EXEC {{#if removeTrackedConversationProcSchema}}[{{removeTrackedConversationProcSchema}}].{{/if}}[{{removeTrackedConversationProcName}}] @handle
+            SET @handle = NULL
+        END
+
+        IF @handle IS NULL
+        BEGIN
+
+            -- Need to start a new conversation for the current @Id
+            BEGIN DIALOG CONVERSATION @handle
+                FROM SERVICE @fromService
+                TO SERVICE @toService
+                ON CONTRACT @onContract
+                WITH ENCRYPTION = OFF;
+
+                INSERT INTO {{#if trackingTableSchema}}[{{trackingTableSchema}}].{{/if}}[{{trackingTableName}}]
+                    (SPID, FromService, ToService, OnContract, Handle)
+                VALUES
+                    (@@SPID, @fromService, @toService, @onContract, @handle);
+
+        END;
+
+        ;SEND ON CONVERSATION @handle 
+            MESSAGE TYPE @messageType (@xml);
+
+        SELECT @error = @@ERROR;
+
+        IF @error = 0
+        BEGIN
+            -- Successful send, just exit the loop
+            BREAK;
+        END
+
+        SELECT @counter = @counter+1;
+
+        IF @counter > 10
+        BEGIN
+            -- We failed 10 times in a row, something must be broken
+            RAISERROR (
+                N'Failed to SEND on a conversation for more than 10 times. Error %i.'
+                    , 16, 1, @error);
+            BREAK;
+        END
+
+        -- Delete the associated conversation from the table and try again
+        DELETE FROM {{#if trackingTableSchema}}[{{trackingTableSchema}}].{{/if}}[{{trackingTableName}}]
+            WHERE Handle = @handle;
+
+        SET @handle = NULL;
+
+    END
+
+END

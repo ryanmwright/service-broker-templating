@@ -1,0 +1,15 @@
+CREATE MESSAGE TYPE [{{name}}]
+    AUTHORIZATION [{{owner}}] 
+    VALIDATION = {{#if (stringEqualsIgnoreCase validation 'WELL_FORMED_XML') ~}}
+                    WELL_FORMED_XML
+                 {{~else if (stringEqualsIgnoreCase validation 'EMPTY')~}}
+                    EMPTY
+                 {{~else if (stringEqualsIgnoreCase validation 'VALID_XML')~}}
+                    {{~#if schemaCollectionName~}}
+                        VALID_XML WITH SCHEMA COLLECTION [{{schemaCollectionName}}]
+                    {{~else~}}
+                        EMPTY
+                    {{~/if~}}
+                  {{~else~}}
+                    NONE
+                 {{~/if~}};

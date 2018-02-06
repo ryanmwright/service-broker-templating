@@ -1,0 +1,29 @@
+{{~#if tableName~}}
+IF OBJECT_ID('{{#if schema}}[{{schema}}].{{/if}}[{{tableName}}]', 'U') IS {{#unless not~}}NOT{{~/unless}} NULL
+BEGIN
+{{{trueBody}}}
+END
+{{~else if queueName~}}
+IF {{#if not}}NOT{{/if}} EXISTS (SELECT 1 FROM sys.service_queues WHERE name = N'{{queueName}}')
+BEGIN
+{{{trueBody}}}
+END
+{{~else if serviceName~}}
+IF {{#if not}}NOT{{/if}} EXISTS (SELECT 1 FROM sys.services AS s WHERE s.name = N'{{serviceName}}')
+BEGIN
+{{{trueBody}}}
+END
+{{~else if contractName~}}
+IF {{#if not}}NOT{{/if}} EXISTS (SELECT 1 FROM sys.service_contracts WHERE name = N'{{contractName}}')
+BEGIN
+{{{trueBody}}}
+END
+{{~else if messageTypeName~}}
+IF {{#if not}}NOT{{/if}} EXISTS (SELECT 1 FROM sys.service_message_types WHERE name = N'{{messageTypeName}}')
+BEGIN
+{{{trueBody}}}
+END
+{{~/if~}}{{~#if falseBody }} ELSE BEGIN
+{{falseBody}}
+END
+{{~/if~}}

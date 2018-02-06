@@ -1,0 +1,5 @@
+ALTER QUEUE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+    WITH 
+    STATUS = {{#if disabled}}OFF{{else}}ON{{/if}},
+    RETENTION = {{#if enableRetention}}ON{{else}}OFF{{/if}},
+    POISON_MESSAGE_HANDLING (STATUS = {{#if enablePoisonMessageHandling}}ON{{else}}OFF{{/if}});

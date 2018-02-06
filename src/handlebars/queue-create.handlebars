@@ -1,0 +1,16 @@
+CREATE QUEUE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+   WITH 
+   STATUS = {{#if disabled}}OFF{{else}}ON{{/if}},
+   RETENTION = {{#if enableRetention}}ON{{else}}OFF{{/if}}
+   {{~#if enableActivation~}}
+     {{~#if activationProcedure.length~}}
+   ,
+   ACTIVATION (
+		STATUS = {{#if enableActivation}}ON{{else}}OFF{{/if}},
+		PROCEDURE_NAME = {{#if activationProcedureSchema}}[{{activationProcedureSchema}}].{{/if}}[{{activationProcedure}}],
+		MAX_QUEUE_READERS = {{#if maxQueueReaders}}{{maxQueueReaders}}{{else}}1{{/if}}, 
+		EXECUTE AS {{#if executeAs}}{{executeAs}}{{else}}SELF{{/if}} ),
+   POISON_MESSAGE_HANDLING (STATUS = {{#if enablePoisonMessageHandling}}ON{{else}}OFF{{/if}}) 
+     {{~/if~}}
+   {{~/if~}}
+   {{~#if fileGroup}}ON [{{fileGroup}}]{{/if~}};

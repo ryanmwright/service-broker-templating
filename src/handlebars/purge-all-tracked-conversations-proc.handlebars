@@ -1,0 +1,90 @@
+IF OBJECT_ID('{{#if schema}}[{{schema}}].{{/if}}[{{name}}]') IS NULL
+BEGIN
+    EXEC('CREATE PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}] AS SET NOCOUNT ON;')
+END
+GO
+ALTER PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+    SET XACT_ABORT,
+        QUOTED_IDENTIFIER,
+        ANSI_NULLS,
+        ANSI_PADDING,
+        ANSI_WARNINGS,
+        ARITHABORT,
+        CONCAT_NULL_YIELDS_NULL ON;
+    SET NUMERIC_ROUNDABORT OFF;
+
+	DECLARE @handle UNIQUEIDENTIFIER;
+
+	DECLARE conversation_cursor CURSOR FOR 
+	SELECT Handle
+	FROM {{#if trackingTableSchema}}[{{trackingTableSchema}}].{{/if}}[{{trackingTableName}}] AS c
+
+	OPEN conversation_cursor
+
+	FETCH NEXT FROM conversation_cursor
+	INTO @handle
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		
+		BEGIN TRY
+
+			BEGIN TRAN;
+				
+				-- Mark the conversation for deletion
+				EXEC {{#if removeTrackedConversationProcSchema}}[{{removeTrackedConversationProcSchema}}].{{/if}}[{{removeTrackedConversationProcName}}] @handle
+
+			COMMIT TRAN;
+
+		END TRY
+		BEGIN CATCH
+
+			IF @@TRANCOUNT > 0
+				ROLLBACK TRAN;
+
+			DECLARE 
+				@ErrorMessage    NVARCHAR(4000),
+				@ErrorNumber     INT,
+				@ErrorSeverity   INT,
+				@ErrorState      INT,
+				@ErrorLine       INT,
+				@ErrorProcedure  NVARCHAR(200);
+
+			SELECT 
+				@ErrorNumber = ERROR_NUMBER(),
+				@ErrorSeverity = ERROR_SEVERITY(),
+				@ErrorState = ERROR_STATE(),
+				@ErrorLine = ERROR_LINE(),
+				@ErrorProcedure = ISNULL(ERROR_PROCEDURE(), '-');
+
+			SELECT @ErrorMessage = 
+				N'Error %d, Level %d, State %d, Procedure %s, Line %d, ' + 
+					'Message: '+ ERROR_MESSAGE();
+
+			RAISERROR 
+				(
+				@ErrorMessage, 
+				@ErrorSeverity, 
+				@ErrorState,               
+				@ErrorNumber,    -- parameter: original error number.
+				@ErrorSeverity,  -- parameter: original error severity.
+				@ErrorState,     -- parameter: original error state.
+				@ErrorProcedure, -- parameter: original error procedure name.
+				@ErrorLine       -- parameter: original error line number.
+				);
+
+		END CATCH
+
+		FETCH NEXT FROM conversation_cursor
+		INTO @handle
+
+	END
+
+	CLOSE conversation_cursor;
+	DEALLOCATE conversation_cursor;
+
+END

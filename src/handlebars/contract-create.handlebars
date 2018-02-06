@@ -1,0 +1,4 @@
+CREATE CONTRACT [{{name}}]
+    AUTHORIZATION [{{owner}}]
+    ( {{#each messageTypes}}[{{name}}] SENT BY {{#if sentByTarget}}TARGET{{else}}INITIATOR{{/if}}{{#unless @last}}, 
+      {{/unless}}{{/each}} );

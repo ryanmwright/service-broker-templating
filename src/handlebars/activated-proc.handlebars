@@ -1,0 +1,136 @@
+IF OBJECT_ID('{{#if schema}}[{{schema}}].{{/if}}[{{name}}]') IS NULL
+BEGIN
+    EXEC('CREATE PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}] AS SET NOCOUNT ON;')
+END
+GO
+ALTER PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+    SET XACT_ABORT,
+        QUOTED_IDENTIFIER,
+        ANSI_NULLS,
+        ANSI_PADDING,
+        ANSI_WARNINGS,
+        ARITHABORT,
+        CONCAT_NULL_YIELDS_NULL ON;
+    SET NUMERIC_ROUNDABORT OFF;
+
+    {{#unless disableHighDeadlockPriority}}
+    -- There is a chance that this process could deadlock with the sending process when an error
+    -- occurrs due to the order we must acquire locks in (When an error occurrs it means the target 
+    -- failed and we still have a record in the conversation tracking table that must be deleted, and the sender may
+    -- still be trying to send using this handle).
+    -- The send process acquires locks on:
+    --		1) Conversation tracking table
+    --		2) Conversation
+    -- and this process acquires them on:
+    --		1) Conversation
+    --		2) Conversation tracking table
+    -- We want to give this process a higher priority when an error happens since the
+    -- conversation is not valid for use anyway.
+    SET DEADLOCK_PRIORITY HIGH;
+    {{/unless}}
+ 
+    DECLARE @handle UNIQUEIDENTIFIER;
+    DECLARE @messageTypeName SYSNAME;
+    DECLARE @messageBody VARBINARY(MAX);
+ 
+    WHILE (1=1)
+    BEGIN
+
+        BEGIN TRY
+
+            BEGIN TRAN;
+    
+            ;WAITFOR (RECEIVE TOP (1)
+                @handle = conversation_handle,
+                @messageTypeName = message_type_name,
+                @messageBody = message_body
+            FROM {{#if queueSchema}}[{{queueSchema}}].{{/if}}[{{queueName}}]), TIMEOUT 5000;
+    
+            IF (@@ROWCOUNT = 0)
+            BEGIN
+                COMMIT TRAN;
+                BREAK;
+            END
+            -- End the conversation
+            IF @messageTypeName = N'http://schemas.microsoft.com/SQL/ServiceBroker/EndDialog'
+            BEGIN
+                END CONVERSATION @handle;
+            END
+            ELSE IF @messageTypeName = N'http://schemas.microsoft.com/SQL/ServiceBroker/Error'
+            BEGIN
+
+                DELETE FROM {{#if conversationTrackingTableSchema}}[{{conversationTrackingTableSchema}}].{{/if}}[{{conversationTrackingTableName}}] WHERE Handle = @handle
+                END CONVERSATION @handle;
+    
+                DECLARE @error INT;
+                DECLARE @description NVARCHAR(4000);
+                WITH XMLNAMESPACES (N'http://schemas.microsoft.com/SQL/ServiceBroker/Error' AS ssb)
+                SELECT
+                    @error = CAST(@messageBody AS XML).value(
+                        '(//ssb:Error/ssb:Code)[1]', 'INT'),
+                    @description = CAST(@messageBody AS XML).value(
+                        '(//ssb:Error/ssb:Description)[1]', 'NVARCHAR(4000)')
+    
+                INSERT INTO {{#if conversationErrorLogTableSchema}}[{{conversationErrorLogTableSchema}}].{{/if}}[{{conversationErrorLogTableName}}]
+                    (ErrorCode, ErrorDescription)
+                VALUES (@error, @description);
+    
+            END{{#if body}} ELSE BEGIN
+            {{{body}}}
+            END
+            {{~/if}}
+
+            COMMIT TRAN;
+
+        END TRY
+        BEGIN CATCH
+
+            IF @@TRANCOUNT > 0
+				ROLLBACK TRAN;
+
+			DECLARE 
+				@ErrorMessage    NVARCHAR(4000),
+				@ErrorNumber     INT,
+				@ErrorSeverity   INT,
+				@ErrorState      INT,
+				@ErrorLine       INT,
+				@ErrorProcedure  NVARCHAR(200);
+
+			SELECT 
+				@ErrorNumber = ERROR_NUMBER(),
+				@ErrorSeverity = ERROR_SEVERITY(),
+				@ErrorState = ERROR_STATE(),
+				@ErrorLine = ERROR_LINE(),
+				@ErrorProcedure = ISNULL(ERROR_PROCEDURE(), '-');
+
+			SELECT @ErrorMessage = 
+				N'Error %d, Level %d, State %d, Procedure %s, Line %d, ' + 
+					'Message: '+ ERROR_MESSAGE();
+
+			RAISERROR 
+				(
+				@ErrorMessage, 
+				@ErrorSeverity, 
+				@ErrorState,               
+				@ErrorNumber,    -- parameter: original error number.
+				@ErrorSeverity,  -- parameter: original error severity.
+				@ErrorState,     -- parameter: original error state.
+				@ErrorProcedure, -- parameter: original error procedure name.
+				@ErrorLine       -- parameter: original error line number.
+				);
+
+        END CATCH
+    END
+END
+GO
+{{#unless disableQueueAlter}}ALTER QUEUE {{#if queueSchema}}[{{queueSchema}}].{{/if}}[{{queueName}}]
+WITH ACTIVATION (
+    STATUS=ON,
+    PROCEDURE_NAME={{#if schema}}[{{schema}}].{{/if}}[{{name}}],
+    EXECUTE AS OWNER,
+    MAX_QUEUE_READERS={{#if maxQueueReaders}}{{maxQueueReaders}}{{else}}10{{/if}}
+);{{/unless}}

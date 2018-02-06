@@ -1,0 +1,9 @@
+CREATE SERVICE [{{name}}] 
+    AUTHORIZATION [{{owner}}]
+    ON QUEUE {{#if queueSchema}}[{{queueSchema}}].{{/if}}[{{queueName}}]
+    {{~#if contracts ~}}
+    {{~#if contracts.length ~}}
+    ( {{#each contracts}}[{{name}}]{{#unless @last}}, 
+      {{/unless}}{{/each}} )
+    {{~/if~}}
+    {{~/if~}};

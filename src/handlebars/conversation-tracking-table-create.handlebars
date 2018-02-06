@@ -1,0 +1,14 @@
+CREATE TABLE {{#if schema}}[{{schema}}].{{/if}}[{{name}}] (
+    SPID INT,
+    FromService SYSNAME NOT NULL,
+    ToService SYSNAME NOT NULL,
+    OnContract SYSNAME NOT NULL,
+    Handle UNIQUEIDENTIFIER NOT NULL,
+    CreateDate DATETIME2 DEFAULT SYSUTCDATETIME(),
+    PRIMARY KEY {{#if memoryOptimized}}NONCLUSTERED{{/if}} (SPID, FromService, ToService, OnContract),
+    UNIQUE (Handle)
+)
+{{~#if memoryOptimized~}}
+WITH ( MEMORY_OPTIMIZED = ON , DURABILITY = SCHEMA_AND_DATA )
+{{~else~}}
+{{~/if}};

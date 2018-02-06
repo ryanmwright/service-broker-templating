@@ -1,0 +1,8 @@
+USE [master]
+GO
+IF ((SELECT is_broker_enabled FROM sys.databases WHERE name = '{{database}}') = 0)
+BEGIN
+    ALTER DATABASE [{{database}}] SET ENABLE_BROKER {{~#if immediate~}}WITH ROLLBACK IMMEDIATE{{~/if}};
+END
+GO
+USE [{{database}}]

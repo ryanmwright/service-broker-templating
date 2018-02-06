@@ -1,0 +1,21 @@
+IF NOT EXISTS (SELECT 1 FROM {{#if schema}}[{{schema}}].{{/if}}[{{name}}] WHERE [Code] = '{{code}}')
+BEGIN
+INSERT INTO {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+(
+    Code,
+    FromService,
+    ToService,
+    OnContract,
+    MessageType,
+    ConversationTimeout
+)
+VALUES
+(
+    N'{{code}}',
+    N'{{fromService}}',
+    N'{{toService}}',
+    N'{{onContract}}',
+    N'{{messageType}}',
+    {{conversationTimeout}}
+);
+END

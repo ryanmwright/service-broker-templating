@@ -1,0 +1,18 @@
+{{~#each contracts~}}
+/*
+ *   Operation: {{#if drop~}}DROPPING{{~else~}}ADDING{{~/if}}
+ *   Contract: [{{name}}] 
+ *   On Service: [{{../name}}]
+ */
+IF {{#unless drop}}NOT{{/unless}} EXISTS (SELECT 1 FROM sys.services AS s
+				INNER JOIN sys.service_contract_usages AS scu
+					ON scu.service_id = s.service_id
+				INNER JOIN sys.service_contracts AS sc
+					ON sc.service_contract_id = scu.service_contract_id
+			WHERE s.name = '{{../name}}'
+				AND sc.name = '{{name}}')
+BEGIN
+	ALTER SERVICE [{{../name}}] 
+		{{#if drop}}(DROP CONTRACT [{{name}}]){{else}}(ADD CONTRACT [{{name}}]){{/if}} ;
+END;
+{{~/each~}}

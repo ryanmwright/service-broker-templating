@@ -1,0 +1,30 @@
+{
+  "name": "service-broker-code-generator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "execute": "webpack --config webpack.config.js && node dist/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/handlebars": "^4.0.36",
+    "@types/node": "^9.4.0",
+    "handlebars-loader": "^1.6.0",
+    "ts-loader": "^3.4.0",
+    "ts-node": "^4.1.0",
+    "typescript": "^2.7.1",
+    "uglifyjs-webpack-plugin": "^1.1.8",
+    "webpack": "^3.10.0",
+    "webpack-merge": "^4.1.1"
+  },
+  "dependencies": {
+    "argparse": "^1.0.9",
+    "extend": "^3.0.1",
+    "handlebars": "^4.0.11",
+    "memory-streams": "^0.1.2"
+  }
+}

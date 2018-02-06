@@ -1,0 +1,7 @@
+CREATE TABLE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    ErrorCode INT NULL,
+    ErrorDescription NVARCHAR(4000) NULL,
+    ErrorDate DATETIME2(0) DEFAULT SYSUTCDATETIME()
+);

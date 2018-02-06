@@ -1,0 +1,11 @@
+CREATE TABLE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Code VARCHAR(255) NOT NULL,
+    FromService SYSNAME NOT NULL,
+    ToService SYSNAME NOT NULL,
+    OnContract SYSNAME NOT NULL,
+    MessageType SYSNAME NOT NULL,
+    ConversationTimeout INT NOT NULL,
+    UNIQUE(Code)
+);

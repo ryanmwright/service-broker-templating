@@ -1,0 +1,33 @@
+IF OBJECT_ID('{{#if schema}}[{{schema}}].{{/if}}[{{name}}]') IS NULL
+BEGIN
+    EXEC('CREATE PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}] AS SET NOCOUNT ON;')
+END
+GO
+ALTER PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
+(
+	@handle UNIQUEIDENTIFIER
+)
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+    SET XACT_ABORT,
+        QUOTED_IDENTIFIER,
+        ANSI_NULLS,
+        ANSI_PADDING,
+        ANSI_WARNINGS,
+        ARITHABORT,
+        CONCAT_NULL_YIELDS_NULL ON;
+    SET NUMERIC_ROUNDABORT OFF;
+
+    -- Delete the conversation from the table and signal an end of stream
+    DELETE FROM {{#if trackingTableSchema}}[{{trackingTableSchema}}].{{/if}}[{{trackingTableName}}]
+        WHERE [Handle] = @handle
+
+    IF @@ROWCOUNT > 0
+    BEGIN
+        ;SEND ON CONVERSATION @handle
+            MESSAGE TYPE [{{endOfStreamMessageType}}];
+    END
+
+END

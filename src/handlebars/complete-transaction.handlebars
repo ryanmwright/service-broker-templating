@@ -1,0 +1,5 @@
+{{~#if commit~}}
+COMMIT TRANSACTION;
+{{~else~}}
+ROLLBACK TRANSACTION;
+{{~/if~}}

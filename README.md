@@ -1,0 +1,1 @@
+Templated generation of service broker artifacts

@@ -74,9 +74,9 @@ const args = parser.parseArgs();
 
 switch (args.generator.toLowerCase()) {
     case "db-init":
-        dbInit(new ConsoleTextWriterFactory(), args);
+        dbInit(new FileTextWriterFactory(), args);
         break;
     case "fire-and-forget-queue":
-        fireAndForgetQueue(new ConsoleTextWriterFactory(), args);
+        fireAndForgetQueue(new FileTextWriterFactory(), args);
         break;
 }

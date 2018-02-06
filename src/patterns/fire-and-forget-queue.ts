@@ -95,15 +95,13 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
         conversationErrorLogTableName: "ServiceBrokerErrorLog"
     };
 
-    const writer = writerFactory.get('fire-and-forget-queue.sql');
+    const initiatorWriter = writerFactory.get('fire-and-forget-queue-initiator.sql');
 
     new BeginTransaction()
-        .execute(writer)
+        .execute(initiatorWriter)
         .go()
         .then(new CreateEndOfStreamMessageType({}))
         .go()
-
-        // Initiator
         .then(new CreateQueue(initiatorQueueConfiguration))
         .go()
         .then(new CreateMessageType(messageTypeConfiguration))
@@ -117,8 +115,19 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
         .then(new InsertEndpointConfigurationTable(endpointConfigurationTableValues))
         .go()
         .then(new CreateActivatedProc(initiatorActivatedProcConfiguration))
+        .go()
+        .then(new CommitTransaction())
+        .go();
 
-        // Target
+    initiatorWriter.close();
+
+    const targetWriter = writerFactory.get('fire-and-forget-queue-target.sql');
+
+    new BeginTransaction()
+        .execute(targetWriter)
+        .go()
+        .then(new CreateEndOfStreamMessageType({}))
+        .go()
         .then(new CreateQueue(targetQueueConfiguration))
         .go()
         .then(new CreateMessageType(messageTypeConfiguration))
@@ -129,9 +138,8 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
         .go()
         .then(new ModifyServiceContracts(targetServiceConfiguration))
         .go()
-
         .then(new CommitTransaction())
         .go();
 
-    writer.close();
+    targetWriter.close();
 }

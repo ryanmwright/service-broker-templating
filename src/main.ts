@@ -1,4 +1,4 @@
-import { dbInit, fireAndForgetQueue } from './module';
+import { dbInit, fireAndForgetQueue, asyncTrigger } from './patterns.module';
 import * as argparse from 'argparse';
 import { TextWriter } from './text-writer';
 import { FileTextWriterFactory } from './file-text-writer-factory';
@@ -70,6 +70,54 @@ queueCommand.addArgument(
 );
 
 // //////////////////////////
+var asyncTriggerCommand = subparsers.addParser('async-trigger', {addHelp: true, description: 'Generates an asynchronous trigger.'});
+asyncTriggerCommand.addArgument(
+    [ '-n', '--name' ],
+    {
+      action: 'store',
+      required: true,
+      help: '(Required) The name of the trigger'
+    }
+);
+
+asyncTriggerCommand.addArgument(
+    [ '-t', '--table' ],
+    {
+      action: 'store',
+      required: true,
+      help: '(Required) The name of the table'
+    }
+);
+
+asyncTriggerCommand.addArgument(
+    [ '-e', '--endpoint' ],
+    {
+      action: 'store',
+      required: true,
+      help: '(Required) The endpoint to send the message to'
+    }
+);
+
+asyncTriggerCommand.addArgument(
+    [ '-c', '--column' ],
+    {
+      action: 'append',
+      required: true,
+      help: 'One or more columns to include when sending'
+    }
+);
+
+asyncTriggerCommand.addArgument(
+    [ '-s', '--schema' ],
+    {
+      action: 'store',
+      required: false,
+      defaultValue: 'dbo',
+      help: '(Optional) The schema of the parent table'
+    }
+);
+
+// //////////////////////////
 const args = parser.parseArgs();
 
 switch (args.generator.toLowerCase()) {
@@ -78,5 +126,8 @@ switch (args.generator.toLowerCase()) {
         break;
     case "fire-and-forget-queue":
         fireAndForgetQueue(new FileTextWriterFactory(), args);
+        break;
+    case "async-trigger":
+        asyncTrigger(new FileTextWriterFactory(), args);
         break;
 }

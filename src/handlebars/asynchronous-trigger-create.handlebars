@@ -1,0 +1,81 @@
+CREATE TRIGGER [{{schema}}].[{{name}}]
+	ON [{{schema}}].[{{tableName}}] FOR UPDATE, INSERT, DELETE
+AS
+BEGIN
+
+	SET NOCOUNT ON
+	
+	DECLARE @InsertedExists BIT = (CASE WHEN EXISTS (SELECT 1 FROM INSERTED)
+								THEN 1 ELSE 0 END)
+	DECLARE @DeletedExists BIT = (CASE WHEN EXISTS(SELECT 1 FROM DELETED)
+								THEN 1 ELSE 0 END)
+
+	-- No rows updated, do nothing
+	IF @InsertedExists = 0 AND @DeletedExists = 0
+	BEGIN
+		RETURN;
+	END
+
+	DECLARE @xml XML
+	DECLARE @ActionCode CHAR(1)
+	DECLARE @CurrentDate DATETIME2 = SYSUTCDATETIME();
+	DECLARE @ContextUserName VARCHAR(50) = SUSER_SNAME();
+
+	-- 
+	-- Generate the XML and send the update notification
+	-- 
+	IF @InsertedExists = 1
+	BEGIN
+
+		IF @DeletedExists = 1
+			SET @ActionCode = 'U'
+		ELSE
+			SET @ActionCode = 'I'
+
+		-- INSERT/UPDATE operation
+		SET @xml = (SELECT 
+
+			-- Global details
+			(SELECT '{{tableName}}' AS TableName
+				, '{{schema}}' AS TableSchema
+				, @CurrentDate AS OperationDate
+				, @ContextUserName AS ContextUserName
+				, @ActionCode AS ActionCode
+				FOR XML PATH(''), TYPE) AS Details,
+
+			-- Generate all records as XML
+			(SELECT {{#each columns}}i.[{{name}}] AS [{{~#if alias~}}{{alias}}{{else}}{{name}}{{/if}}]{{#unless @last}}, 
+     				{{/unless}}{{/each}}
+				FROM INSERTED AS i
+			FOR XML PATH('{{collectionElementName}}'), TYPE) AS [{{collectionName}}]
+		
+		FOR XML PATH('{{rootElement}}'))
+
+	END ELSE BEGIN
+
+		SET @ActionCode = 'D'
+
+		-- DELETE operation
+		SET @xml = (SELECT 
+
+			-- Global details
+			(SELECT '{{tableName}}' AS TableName
+				, '{{schema}}' AS TableSchema
+				, @CurrentDate AS OperationDate
+				, @ContextUserName AS ContextUserName
+				, @ActionCode AS ActionCode
+				FOR XML PATH(''), TYPE) AS Details,
+
+			-- Generate all records as XML
+			(SELECT {{#each columns}}i.[{{name}}] AS [{{~#if alias~}}{{alias}}{{else}}{{name}}{{/if}}]{{#unless @last}}, 
+     				{{/unless}}{{/each}}
+				FROM DELETED AS d
+			FOR XML PATH('{{collectionElementName}}'), TYPE) AS [{{collectionName}}]
+		
+		FOR XML PATH('{{rootElement}}'))
+
+	END
+
+	EXEC {{#if sendMessageProcSchema}}[{{sendMessageProcSchema}}].{{/if}}[{{sendMessageProcName}}] @endpoint='{{endpoint}}', @xml=@xml
+
+END

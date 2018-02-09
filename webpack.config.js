@@ -31,13 +31,11 @@ module.exports = () => {
             // Ignore any typing files that get generated
             new webpack.WatchIgnorePlugin([
                 /css\.d\.ts$/
-            ]),
-            //new UglifyJSPlugin({sourceMap: false}),
+            ])
         ],
         output: {
             filename: './[name].js',
-            path: path.resolve(__dirname, 'dist'),
-            library: 'brokertemplates'
+            path: path.resolve(__dirname, 'dist')
         },
         resolve: {
             extensions: ['.tsx', '.ts', '.js'],
@@ -53,6 +51,9 @@ module.exports = () => {
             entry: {
                 main: `${__dirname}/src/main.ts`
             },
+            plugins: [
+                new webpack.BannerPlugin({ banner: '#!/usr/bin/env node', raw: true })
+            ],
             externals: fs.readdirSync("node_modules")
                 .reduce(function (acc, mod) {
                     if (mod === ".bin") {
@@ -64,8 +65,19 @@ module.exports = () => {
         }),
         merge(baseConfig, {
             entry: {
-                initdb: `${__dirname}/src/module.ts`
+                actions: `${__dirname}/src/actions.module.ts`
             },
-        })
+            output: {
+                library: 'sbgen'
+            }
+        }),
+        merge(baseConfig, {
+            entry: {
+                patterns: `${__dirname}/src/patterns.module.ts`
+            },
+            output: {
+                library: 'sbgen'
+            }
+        }),
     ];
 };

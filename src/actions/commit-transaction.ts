@@ -1,5 +1,4 @@
 import { Action } from "./action";
-import * as Handlebars from 'handlebars';
 import * as completeTransactionTemplate from '../handlebars/complete-transaction.handlebars';
 import { TextWriter } from "../text-writer";
 import { ActionResult } from "../action-result";

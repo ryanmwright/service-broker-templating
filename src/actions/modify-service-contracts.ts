@@ -1,5 +1,4 @@
 import { Action } from "./action";
-import * as Handlebars from 'handlebars';
 import * as template from '../handlebars/service-modify-contracts.handlebars';
 import * as existenceCheckTemplate from '../handlebars/existence-check.handlebars';
 import { TextWriter } from "../text-writer";

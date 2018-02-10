@@ -1,5 +1,4 @@
 import { Action } from "./action";
-import * as Handlebars from 'handlebars';
 import * as createTemplate from '../handlebars/endpoint-configuration-table-insert.handlebars';
 import * as existenceCheckTemplate from '../handlebars/existence-check.handlebars';
 import { TextWriter } from "../text-writer";

@@ -27,25 +27,26 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
     const defaultOwner = "dbo";
     const defaultEndOfStreamMessageType = "EndOfStream";
     const ns = args.namespace ? args.namespace : '';
+    const postfix = "FireAndForget";
 
     const initiatorQueueConfiguration = {
-        schema: "dbo",
-        name: args.initiator ? args.initiator + "Queue" : "InitiatorQueue"
+        schema: defaultSchema,
+        name: args.initiator ? `${args.initiator}${postfix}Queue` : `Initiator${postfix}Queue`
     };
 
     const targetQueueConfiguration = {
         schema: defaultSchema,
-        name: args.name + "Queue"
+        name: `${args.name}${postfix}Queue`
     };
 
     const messageTypeConfiguration = {
-        name: ns + args.name + "MessageType",
+        name: `${ns}${args.name}MessageType`,
         owner: args.owner || defaultOwner,
         validation: "WELL_FORMED_XML"
     };
     
     const contractConfiguration = {
-        name: ns + args.name + "Contract",
+        name: `${ns}${args.name}${postfix}Contract`,
         owner: defaultOwner,
         messageTypes: [
             {name: defaultEndOfStreamMessageType},
@@ -54,7 +55,7 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
     };
     
     const initiatorServiceConfiguration = {
-        name: ns + (args.initiator ? args.initiator + "Service" : "InitiatorService"),
+        name: ns + (args.initiator ? `${args.initiator}${postfix}Service` : `Initiator${postfix}Service`),
         owner: defaultOwner,
         queueSchema: initiatorQueueConfiguration.schema,
         queueName: initiatorQueueConfiguration.name,
@@ -64,7 +65,7 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
     };
     
     const targetServiceConfiguration = {
-        name: ns + args.name + "Service",
+        name: `${ns}${args.name}${postfix}Service`,
         owner: defaultOwner,
         queueSchema: targetQueueConfiguration.schema,
         queueName: targetQueueConfiguration.name,
@@ -75,7 +76,7 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
 
     const endpointConfigurationTableValues = {
         name: "ServiceBrokerEndpointConfiguration",
-        schema: "dbo",
+        schema: defaultSchema,
         code: args.name,
         fromService: initiatorServiceConfiguration.name,
         toService: targetServiceConfiguration.name,
@@ -85,13 +86,13 @@ export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) 
     };
 
     const initiatorActivatedProcConfiguration = {
-        schema: "dbo",
-        name: (args.initiator ? args.initiator + "Queue" : "InitiatorQueue") + "ActivatedListener",
+        schema: defaultSchema,
+        name: (args.initiator ? `${args.initiator}${postfix}Queue` : `${postfix}InitiatorQueue`) + "ActivatedListener",
         queueSchema: initiatorQueueConfiguration.schema,
         queueName: initiatorQueueConfiguration.name,
-        conversationTrackingTableSchema: "dbo",
+        conversationTrackingTableSchema: defaultSchema,
         conversationTrackingTableName: "ServiceBrokerConversationPool",
-        conversationErrorLogTableSchema: "dbo",
+        conversationErrorLogTableSchema: defaultSchema,
         conversationErrorLogTableName: "ServiceBrokerErrorLog"
     };
 

@@ -20,7 +20,7 @@ import { TextWriterFactory } from '../text-writer-factory';
 export function fireAndForgetQueue(writerFactory: TextWriterFactory, args: any) {
 
     if (!args.name) {
-        throw "name is required";
+        throw new Error("name is required");
     }
 
     const defaultSchema = 'dbo';

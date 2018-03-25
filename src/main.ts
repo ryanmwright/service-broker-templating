@@ -117,6 +117,16 @@ asyncTriggerCommand.addArgument(
     }
 );
 
+asyncTriggerCommand.addArgument(
+    [ '-j', '--json' ],
+    {
+      action: 'storeTrue',
+      required: false,
+      defaultValue: false,
+      help: '(Optional) Generate the trigger as a JSON trigger (for SQL 2016+)'
+    }
+);
+
 // //////////////////////////
 const args = parser.parseArgs();
 

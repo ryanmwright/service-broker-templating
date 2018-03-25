@@ -16,13 +16,14 @@ BEGIN
 		RETURN;
 	END
 
-	DECLARE @xml XML
-	DECLARE @ActionCode CHAR(1)
+	DECLARE @data {{#if json}}NVARCHAR(MAX){{else}}XML{{/if}};
+	DECLARE @ActionCode CHAR(1);
+	DECLARE @UpdateId UNIQUEIDENTIFIER = NEWID();
 	DECLARE @CurrentDate DATETIME2 = SYSUTCDATETIME();
 	DECLARE @ContextUserName VARCHAR(50) = SUSER_SNAME();
 
 	-- 
-	-- Generate the XML and send the update notification
+	-- Generate the and send the update notification
 	-- 
 	IF @InsertedExists = 1
 	BEGIN
@@ -33,49 +34,53 @@ BEGIN
 			SET @ActionCode = 'I'
 
 		-- INSERT/UPDATE operation
-		SET @xml = (SELECT 
+		SET @data = (SELECT 
 
 			-- Global details
-			(SELECT '{{tableName}}' AS TableName
-				, '{{schema}}' AS TableSchema
-				, @CurrentDate AS OperationDate
-				, @ContextUserName AS ContextUserName
-				, @ActionCode AS ActionCode
-				FOR XML PATH(''), TYPE) AS Details,
+			'{{tableName}}' AS TableName,
+			'{{schema}}' AS TableSchema,
+			@CurrentDate AS OperationDate,
+			@ContextUserName AS ContextUserName,
+			@ActionCode AS ActionCode,
+			@UpdateId AS UpdateId,
 
-			-- Generate all records as XML
 			(SELECT {{#each columns}}i.[{{name}}] AS [{{~#if alias~}}{{alias}}{{else}}{{name}}{{/if}}]{{#unless @last}}, 
      				{{/unless}}{{/each}}
 				FROM INSERTED AS i
-			FOR XML PATH('{{collectionElementName}}'), TYPE) AS [{{collectionName}}]
+			{{#if json}}FOR JSON PATH{{else}}FOR XML PATH('{{collectionElementName}}'), TYPE{{/if}}) AS [{{collectionName}}]
 		
-		FOR XML PATH('{{rootElement}}'))
+		{{#if json}}FOR JSON PATH, WITHOUT_ARRAY_WRAPPER{{else}}FOR XML PATH('{{rootElement}}'){{/if}})
 
 	END ELSE BEGIN
 
 		SET @ActionCode = 'D'
 
 		-- DELETE operation
-		SET @xml = (SELECT 
+		SET @data = (SELECT 
 
 			-- Global details
-			(SELECT '{{tableName}}' AS TableName
-				, '{{schema}}' AS TableSchema
-				, @CurrentDate AS OperationDate
-				, @ContextUserName AS ContextUserName
-				, @ActionCode AS ActionCode
-				FOR XML PATH(''), TYPE) AS Details,
+			'{{tableName}}' AS TableName,
+			'{{schema}}' AS TableSchema,
+			@CurrentDate AS OperationDate,
+			@ContextUserName AS ContextUserName,
+			@ActionCode AS ActionCode,
+			@UpdateId AS UpdateId,
 
-			-- Generate all records as XML
 			(SELECT {{#each columns}}i.[{{name}}] AS [{{~#if alias~}}{{alias}}{{else}}{{name}}{{/if}}]{{#unless @last}}, 
      				{{/unless}}{{/each}}
 				FROM DELETED AS d
-			FOR XML PATH('{{collectionElementName}}'), TYPE) AS [{{collectionName}}]
+			{{#if json}}FOR JSON PATH{{else}}FOR XML PATH('{{collectionElementName}}'), TYPE{{/if}}) AS [{{collectionName}}]
 		
-		FOR XML PATH('{{rootElement}}'))
+		{{#if json}}FOR JSON PATH, WITHOUT_ARRAY_WRAPPER{{else}}FOR XML PATH('{{rootElement}}'){{/if}})
 
 	END
 
-	EXEC {{#if sendMessageProcSchema}}[{{sendMessageProcSchema}}].{{/if}}[{{sendMessageProcName}}] @endpoint='{{endpoint}}', @xml=@xml
+	EXEC {{#if sendMessageProcSchema}}[{{sendMessageProcSchema}}].{{/if}}[{{sendMessageProcName}}] @endpoint='{{endpoint}}', {{#if json}}@nvarchar=@data{{else}}@xml=@data{{/if}}
 
 END
+
+GO
+
+sp_settriggerorder @triggername = '[{{schema}}].[{{name}}]', @order = 'last', @stmttype = 'INSERT'
+sp_settriggerorder @triggername = '[{{schema}}].[{{name}}]', @order = 'last', @stmttype = 'UPDATE'
+sp_settriggerorder @triggername = '[{{schema}}].[{{name}}]', @order = 'last', @stmttype = 'DELETE'

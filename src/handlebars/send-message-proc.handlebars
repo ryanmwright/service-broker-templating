@@ -6,7 +6,8 @@ GO
 ALTER PROCEDURE {{#if schema}}[{{schema}}].{{/if}}[{{name}}]
 (
     @endpoint VARCHAR(255) = NULL,
-    @xml XML
+    @xml XML,
+    @nvarchar NVARCHAR(MAX)
 )
 AS BEGIN
 
@@ -19,6 +20,20 @@ AS BEGIN
         ARITHABORT,
         CONCAT_NULL_YIELDS_NULL ON;
     SET NUMERIC_ROUNDABORT OFF;
+
+    IF (@varBinary IS NULL AND @xml IS NULL)
+        RETURN;
+
+    DECLARE @NotNullCount INT = 
+        ((CASE WHEN @xml IS NULL THEN 0 ELSE 1 END) + (CASE WHEN @nvarchar IS NULL THEN 0 ELSE 1 END));
+    
+	IF @NotNullCount > 1
+	BEGIN
+		RAISERROR (
+				N'Failed to SEND because %i payload fields are filled in when no more than 1 is expected'
+				, 16, 1, @NotNullCount);
+		RETURN;
+	END
 
     DECLARE @fromService SYSNAME,
         @toService SYSNAME,
@@ -42,11 +57,10 @@ AS BEGIN
         RETURN;
     END
 
-    DECLARE @SBDialog UNIQUEIDENTIFIER
-    DECLARE @Message XML
-    DECLARE @counter INT
-    DECLARE @error INT
-    DECLARE @conversationCreateDate DATETIME2
+    DECLARE @SBDialog UNIQUEIDENTIFIER;
+    DECLARE @counter INT;
+    DECLARE @error INT;
+    DECLARE @conversationCreateDate DATETIME2;
     DECLARE @handle UNIQUEIDENTIFIER;
 
     SET @counter = 1
@@ -90,8 +104,14 @@ AS BEGIN
 
         END;
 
-        ;SEND ON CONVERSATION @handle 
-            MESSAGE TYPE @messageType (@xml);
+        IF @xml IS NOT NULL
+        BEGIN
+            ;SEND ON CONVERSATION @handle 
+                MESSAGE TYPE @messageType (@xml);
+        END ELSE IF @nvarchar IS NOT NULL
+            ;SEND ON CONVERSATION @handle 
+                MESSAGE TYPE @messageType (@nvarchar);
+        END
 
         SELECT @error = @@ERROR;
 

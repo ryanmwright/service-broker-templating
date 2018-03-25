@@ -13,6 +13,7 @@ export function asyncTrigger(writerFactory: TextWriterFactory, args: any) {
         schema: args.schema,
         name: args.name,
         tableName: args.table,
+        json: args.json,
         sendMessageProcSchema: "dbo",
         endpoint: args.endpoint,
         sendMessageProcName: "SendMessage",
@@ -22,9 +23,9 @@ export function asyncTrigger(writerFactory: TextWriterFactory, args: any) {
         columns: []
     };
 
-    let colLen = args.column.length;
-    for (let i=0; i<colLen; i++) {
-        let col = args.column[i];
+    const colLen = args.column.length;
+    for (let i = 0; i < colLen; i++) {
+        const col = args.column[i];
         defaultArguments.columns.push({name: col, alias: col});
     }
 
